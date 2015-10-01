@@ -1,0 +1,45 @@
+# Directories
+HOMEDIR = $(shell pwd | sed -e 's/\/src.*//')
+LIBDIR  = $(HOMEDIR)/lib
+MODDIR  = $(HOMEDIR)/mod
+OBJDIR  = $(HOMEDIR)/obj
+BINDIR  = $(HOMEDIR)/bin
+VPATH   = $(LIBDIR) $(BINDIR) $(OBJDIR)
+
+# Compiler and archiver
+CC  = mpicc
+CXX = mpicxx
+F90 = mpif90
+LD  = mpif90
+AR  = ar rcv
+RL  = ranlib
+
+# Compiler flags
+CFLAGS   =
+F90FLAGS = 
+LDFLAGS  = -openmp
+INCFLAGS = 
+MODFLAGS = -module $(MODDIR)
+DBGFLAGS = -openmp -O0 -g -CA -CB -CS -CV -traceback -debug all -ftrapuv -check all -WB -warn all
+OPTFLAGS = -openmp -O3 -xAVX -ip -override-limits
+
+# External libraries
+BLAS_DIR = /home/silideng/opt/lapack
+BLAS_LIB = -L$(BLAS_DIR)/lib -lblas
+LAPACK_DIR = /home/silideng/opt/lapack
+LAPACK_LIB = -L$(LAPACK_DIR)/lib -llapack
+
+HYPRE_DIR = /home/silideng/opt/hypre
+HYPRE_INC = -I$(HYPRE_DIR)/include
+HYPRE_LIB = -L$(HYPRE_DIR)/lib -lHYPRE
+
+FFTW_DIR = /home/silideng/opt/fftw
+FFTW_INC = -I$(FFTW_DIR)/include
+FFTW_LIB = -L$(FFTW_DIR)/lib -lfftw3
+
+SUNDIALS_DIR = /home/silideng/opt/sundials-2.5.0
+SUNDIALS_LIB = -L$(SUNDIALS_DIR)/lib -lsundials_fnvecserial -lsundials_nvecserial -lsundials_fcvode -lsundials_cvode
+
+# Installation script
+INSTDIR = $(HOME)/bin
+INSTSCPT = cp $(BINDIR)/* $(INSTDIR)/.
