@@ -169,6 +169,9 @@ program init_flow
 !!$  case ('sydney')
 !!$     call sydney_grid
 !!$     call sydney_data
+  case ('bluffbody_SD')
+     call bluffbody_SD_grid
+     call bluffbody_SD_data
   case default
      print*, "Unknown simulation", simulation
      print*, "Assuming a 2D Gambit mesh file is present"
