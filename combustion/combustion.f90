@@ -537,6 +537,7 @@ subroutine combustion_init
            end do
         end do
      end do
+
      ! SD end
 
 
@@ -1544,16 +1545,18 @@ subroutine combustion_ignite
 !!$     end do
 !!$  end if
 
-!!$  !$OMP PARALLEL DO
-!!$  do k=kmino_,kmaxo_
-!!$     do j=jmino_,jmaxo_
-!!$        do i=imino_,imaxo_
-!!$           if (SC(i,j,k,isc_ZMIX).lt.0.083 .and. SC(i,j,k,isc_ZMIX).gt.0.043) SC(i,j,k,isc_PROG) = 0.8_WP
-!!$        end do
-!!$     end do
-!!$  end do
-!!$  !$OMP END PARALLEL DO
-
+  if (trim(chemistry).eq.'chemtable') then
+     !$OMP PARALLEL DO
+     do k=kmino_,kmaxo_
+        do j=jmino_,jmaxo_
+           do i=imino_,imaxo_
+              if (SC(i,j,k,isc_ZMIX).lt.0.13 .and. SC(i,j,k,isc_ZMIX).gt.0.043) SC(i,j,k,isc_PROG) = 0.8_WP
+           end do
+        end do
+     end do
+     !$OMP END PARALLEL DO
+  end if
+  
   ! Recompute rho
   call combustion_density
   

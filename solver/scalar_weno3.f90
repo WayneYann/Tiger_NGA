@@ -308,7 +308,7 @@ subroutine scalar_weno3_residual
   
   integer  :: i,j,k,isc
   real(WP) :: rhs
-  
+
   do isc=1,nscalar
      ! Get coefficients first
      call scalar_weno3_coeff(isc)

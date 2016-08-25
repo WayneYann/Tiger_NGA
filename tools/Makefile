@@ -7,7 +7,7 @@ BINFILES = init_flow data2plot3d config2plot3d chucks2arts \
 	   editData statdata2plot3d statconfig2plot3d spectrum \
 	   rescaler compare mergeData bl2ml channel2jet \
 	   create1DChemtable combineInflow createPremtable \
-           createUnsteadyPremtable
+           createUnsteadyPremtable unsteadyFlamelet_stat
 
 all:	Makefile
 	@for i in $(BINFILES); do make -C $$i; done

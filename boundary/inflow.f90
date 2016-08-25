@@ -37,7 +37,7 @@ contains
     
     ! Rescaling of the inflow
     call parser_read('Inflow file rescale',rescale_inflow,.false.)
-    
+
     read_bulk = rescale_inflow
     do nflow=1,ninlet
        if ( trim(inlet_type(nflow)).ne.'file' .and. &
@@ -267,6 +267,7 @@ subroutine inflow_init
   ! Read the types of velocity inflow from the input file 
   call parser_getsize('Inlet velocity type',ninput)
   allocate(inlet_type(ninlet))
+
   if (ninput.eq.ninlet) then
      call parser_read('Inlet velocity type',inlet_type)
   else

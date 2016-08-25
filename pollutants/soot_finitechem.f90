@@ -246,6 +246,11 @@ subroutine soot_finitechem_init
   gamma_PAH(7) = 2.5e-2_WP
   gamma_PAH(8) = 3.9e-2_WP
 
+  ! SD
+!!$  gamma_PAH = gamma_PAH * 10.0_WP
+!!$  print*,'Gamma',gamma_PAH
+  ! SD END
+
   return
 end subroutine soot_finitechem_init
 
@@ -375,7 +380,7 @@ subroutine soot_finitechem_ksg(Y_,temp,dens,ksg)
   real(WP) :: C_C2H2, C_SootStar
 
   C_C2H2 = dens * Y_(i_C2H2-isc_sc+1) / (W_sp(i_C2H2-isc_sc+1)/1000.0_WP)
-
+  
   call soot_finitechem_sootstar(Y_,temp,dens,C_SootStar)
 
   ksg = A4_s * temp**n4_s * exp(-E4_s/temp) * C_C2H2 * C_SootStar

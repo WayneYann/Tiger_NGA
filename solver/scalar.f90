@@ -526,6 +526,7 @@ subroutine scalar_step
       call pollutants_source_scalar(SC,srcSCmid,srcP)
       call spray_source_scalar(SC,srcSCmid,srcP)
 
+      
       !$OMP DO
       do k=kmino_,kmaxo_
          do j=jmino_,jmaxo_
@@ -555,6 +556,7 @@ subroutine scalar_step
      call scalar_houc_residual
      call scalar_houc_inverse
   end select
+
 
   !$OMP PARALLEL
   

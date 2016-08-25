@@ -38,6 +38,9 @@ module soot
   real(WP) :: min_dp,max_dp
   real(WP) :: min_np,max_np
   real(WP) :: min_int,max_int
+  
+  ! Artificially truncate soot
+  real(WP) :: soot_z
 
 contains
   
@@ -169,7 +172,7 @@ subroutine soot_init
   use soot
   implicit none
 
-  ! If not using soot model, the return
+  ! If not using soot model, then return
   call parser_read('Use soot model',use_soot,.false.)
 
   if (.not.use_soot) return
@@ -194,11 +197,8 @@ subroutine soot_init
   call parser_read('Intermittency threshold',soot_int,1.0e-10_WP)
 
   ! Solve for number density squared for double delta soot subfilter PDF
-  if (use_sgs) then
-     call parser_read('Soot subfilter PDF',use_soot_sgs)
-  else
-     use_soot_sgs = .false.
-  end if
+  call parser_read('Soot subfilter PDF',use_soot_sgs)
+  
   if (use_soot_sgs) nEquations = nEquations + 1
 
   ! Allocate general arrays for soot
@@ -226,6 +226,9 @@ subroutine soot_init
 
   ! Soot diffusivity
   call soot_diffusivity
+
+  ! Inhibit soot formed at lean mixture fraction
+  call parser_read('Threshold ZMIX',soot_z,0.0_WP)
 
   ! Compute derived soot quantities
   call soot_poststep

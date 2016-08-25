@@ -201,13 +201,15 @@ contains
 
   function soot_beta_cond()
     use soot
+    
     implicit none
     real(WP) :: soot_beta_cond
     real(WP) :: dV,S0v,omega
 
     ! Compute the subfilter intermittency and normalize the moments
     omega = 0.0_WP
-    if (use_soot_sgs) omega = 1.0_WP - (mom(1)**2/mom(nMoments+1))
+
+    if (use_soot_sgs) omega = min(max(1.0_WP - (mom(1)**2/mom(nMoments+1)),0.0_WP),1.0_WP-1e-8_WP) ! SD 1.0_WP - (mom(1)**2/mom(nMoments+1)
     mom = mom / (1.0_WP-omega)
 
     dV = DIMER_NBRC
@@ -748,14 +750,17 @@ contains
 
     integer :: i
     real(WP) :: omega, src_tmp
+
     
     ! Compute dimer concentration
-    call soot_pah_molecules
+    call soot_pah_molecules 
+
 
     ! Compute the subfilter intermittency and normalized moments
     omega = 0.0_WP
-    if (use_soot_sgs) omega = 1.0_WP - (mom(1)**2/mom(nMoments+1))
+    if (use_soot_sgs) omega = min(max(1.0_WP - (mom(1)**2/mom(nMoments+1)),0.0_WP),1.0_WP-1e-8_WP) ! SD 1.0_WP - (mom(1)**2/mom(nMoments+1))
     mom = mom / (1.0_WP-omega)
+
 
     ! Source terms for moments
     do i=1,nMoments-1
@@ -920,6 +925,8 @@ subroutine soot_hmom_init
 
   real(WP) :: tol
   integer :: i,j,k,n
+  logical :: soot_reset
+  
 
   ! Initialize the finite rate chemistry portion of soot, if applicable
   select case(trim(chemistry))
@@ -962,6 +969,15 @@ subroutine soot_hmom_init
   ! Set nucleated particle size
   NUCL_NBRC = 2.0_WP*DIMER_NBRC
   NUCL_SURF = NUCL_NBRC**(2.0_WP/3.0_WP)
+
+  call parser_read('Soot reset', soot_reset,.false.)
+  if (soot_reset) then
+     SC(:,:,:,isc_mom(1)) = SMALLWEIGHT
+     SC(:,:,:,isc_mom(nMoments)) = SMALLWEIGHT
+     do n=2,nMoments-1
+        SC(:,:,:,isc_mom(n)) = SMALLWEIGHT * NUCL_NBRC**moments(n,1) * NUCL_SURF**moments(n,2)
+     end do
+  end if
 
   ! If walls, put some typical values
   !$OMP PARALLEL DO
@@ -1009,6 +1025,7 @@ subroutine soot_hmom_source_scalar(SC_,srcSC_,srcP_)
 
   real(WP) :: Wmix
 
+
   ! If not soot, then return
   if (.not.use_soot) return
 
@@ -1026,12 +1043,10 @@ subroutine soot_hmom_source_scalar(SC_,srcSC_,srcP_)
          call chemtable_lookup('oxCoeff',tmp5)
          call chemtable_lookup('o2Coeff',tmp6)
          call chemtable_lookup('ProdRate',tmp7)
-         ! SD
-         !print*,'tmp7:ProdRate', maxval(tmp7)
          
          if (use_pah) then
             call chemtable_lookup('Y_PAH',tmp8)
-            !print*,'tmp8:Y_PAH', maxval(tmp8) ! SD
+
             !$OMP PARALLEL DO
             do k=kmin_,kmax_
                do j=jmin_,jmax_
@@ -1053,7 +1068,7 @@ subroutine soot_hmom_source_scalar(SC_,srcSC_,srcP_)
          end if
       case ('finite chem')
   end select
-
+  
   !$OMP PARALLEL DO PRIVATE (t_start,rate,dt_soot,step,n)
   do k=kmin_,kmax_
      do j=jmin_,jmax_
@@ -1096,15 +1111,18 @@ subroutine soot_hmom_source_scalar(SC_,srcSC_,srcP_)
                  old_mom(n) = mom(n)
               end do
 
+
               t_start = 0.0_WP
               step = 0
+              
               do while (t_start.lt.dt_ .and. step.lt.10000)
                  ! Dispersed-phase source terms
                  call soot_hmom_source_solid
 
                  ! Compute timestep
                  dt_soot = dt_ - t_start
-                 rate = 1.05_WP*maxval(-dt_soot*src_mom/mom)
+                 !rate = 1.05_WP*maxval(-dt_soot*src_mom/mom) !SD default:1.05
+                 rate = 1.05_WP*maxval(abs(-dt_soot*src_mom/mom))
                  if (rate.gt.1.0_WP) then
                     dt_soot = dt_soot / rate
                  end if
@@ -1122,6 +1140,12 @@ subroutine soot_hmom_source_scalar(SC_,srcSC_,srcP_)
                  t_start = t_start+dt_soot
                  step = step+1
               end do
+
+!!$              if (mom(1)*Avogadro*1.0e-6_WP.gt.2e+11_WP) then
+!!$                 print*,'STEPs: ', step
+!!$                 print*,i,j
+!!$              end if
+
 
               ! If not done, add remaining source term
               if (t_start.lt.dt) then
@@ -1151,6 +1175,8 @@ subroutine soot_hmom_source_scalar(SC_,srcSC_,srcP_)
                     end if
                  case ('finite chem')
                     call soot_finitechem_rhodot(rhodot,SC_(i,j,k,isc_sc:isc_sc+N_nons-1),T(i,j,k),dens)
+                    ! SD
+                    !if (x(i).eq.2e-2_WP .and. j.eq.3) print*,'rhodot',i,j,rhodot,'A2',SC_(i,j,k,37-isc_sc+1),'A2R5',SC_(i,j,k,39-isc_sc+1)
               end select
 
               ! Evaluate moments at midstep for gas-phase source terms
@@ -1240,30 +1266,35 @@ subroutine soot_hmom_poststep
   use masks
   use memory
   implicit none
+
   integer :: i,j,k,n
   real(WP) :: omega,src_tmp,Wmix
-
-  ! Compute quantities which are only functions of the combustion scalars
-  call chemtable_lookup('sqrtT',tmp1)
-  call chemtable_lookup('T_MU',tmp2)
-  call chemtable_lookup('MUsqrtW_RHOsqrtT',tmp3)
-  call chemtable_lookup('wCoeff',tmp4)
-  call chemtable_lookup('oxCoeff',tmp5)
-  call chemtable_lookup('o2Coeff',tmp6)
-  call chemtable_lookup('ProdRate',tmp7)
-  if (use_pah) then
-     call chemtable_lookup('Y_PAH',tmp8)
-     !$OMP PARALLEL DO
-     do k=kmin_,kmax_
-        do j=jmin_,jmax_
-           do i=imin_,imax_
-              tmp7(i,j,k) = tmp7(i,j,k) * min((SC(i,j,k,isc_PAH) / tmp8(i,j,k))**2,1.0e4_WP)
+  
+  select case(trim(chemistry))
+  case ('chemtable')
+     ! Compute quantities which are only functions of the combustion scalars
+     call chemtable_lookup('sqrtT',tmp1)
+     call chemtable_lookup('T_MU',tmp2)
+     call chemtable_lookup('MUsqrtW_RHOsqrtT',tmp3)
+     call chemtable_lookup('wCoeff',tmp4)
+     call chemtable_lookup('oxCoeff',tmp5)
+     call chemtable_lookup('o2Coeff',tmp6)
+     call chemtable_lookup('ProdRate',tmp7)
+     if (use_pah) then
+        call chemtable_lookup('Y_PAH',tmp8)
+        !$OMP PARALLEL DO
+        do k=kmin_,kmax_
+           do j=jmin_,jmax_
+              do i=imin_,imax_
+                 tmp7(i,j,k) = tmp7(i,j,k) * min((SC(i,j,k,isc_PAH) / tmp8(i,j,k))**2,1.0e4_WP)
+              end do
            end do
         end do
-     end do
-     !$OMP END PARALLEL DO
-  end if
-
+        !$OMP END PARALLEL DO
+     end if
+  case ('finite chem')
+  end select
+  
   !$OMP PARALLEL DO PRIVATE(omega,src_tmp,Wmix)
   do k=kmino_,kmaxo_
      do j=jmino_,jmaxo_
@@ -1287,8 +1318,12 @@ subroutine soot_hmom_poststep
            else
 
               ! Get the values
-              do n=1,nEquations
-                 mom(n) = SC(i,j,k,isc_mom(n))
+              do n=1,nEquations !SD
+                 if (SC(i,j,k,isc_ZMIX).gt.soot_z) then
+                    mom(n) = SC(i,j,k,isc_mom(n))
+                 else
+                    mom(n) = 0.0_WP
+                 end if
               end do
               call soot_hmom_clip
               do n=1,nEquations
@@ -1298,7 +1333,8 @@ subroutine soot_hmom_poststep
               
               ! Compute the subfilter intermittency and normalize the moments
               omega = 0.0_WP
-              if (use_soot_sgs) omega = 1.0_WP - (mom(1)**2/mom(nMoments+1))
+              if (use_soot_sgs) omega = min(max(1.0_WP - (mom(1)**2/mom(nMoments+1)),0.0_WP),1.0_WP-1e-8_WP) ! SD 1.0_WP - (mom(1)**2/mom(nMoments+1))
+              
               mom = mom / (1.0_WP - omega)
 
               ! Number density
@@ -1323,14 +1359,28 @@ subroutine soot_hmom_poststep
               ! Get the density
               dens = RHO(i,j,k)
 
-              ! Compute quantities which are only functions of the combustion scalars
-              sqrtT = tmp1(i,j,k)
-              T_MU = tmp2(i,j,k)
-              MUsqrtW_RHOsqrtT = tmp3(i,j,k)
-              wCoeff = tmp4(i,j,k)
-              oxCoeff = tmp5(i,j,k)
-              o2Coeff = tmp6(i,j,k)
-              prodRate = tmp7(i,j,k)
+              select case(trim(chemistry))
+              case ('chemtable')
+                 ! Compute quantities which are only functions of the combustion scalars
+                 sqrtT = tmp1(i,j,k)
+                 T_MU = tmp2(i,j,k)
+                 MUsqrtW_RHOsqrtT = tmp3(i,j,k)
+                 wCoeff = tmp4(i,j,k)
+                 oxCoeff = tmp5(i,j,k)
+                 o2Coeff = tmp6(i,j,k)
+                 prodRate = tmp7(i,j,k)
+              case ('finite chem')
+                 sqrtT = sqrt(T(i,j,k))
+                 T_MU = T(i,j,k) / VISC(i,j,k)
+                 call finitechem_W(SC(i,j,k,isc_sc:isc_sc+N_nons-1),Wmix)
+                 Wmix = Wmix / 1000.0_WP
+                 MUsqrtW_RHOsqrtT = VISC(i,j,k)/RHO(i,j,k)*sqrt(Wmix/T(i,j,k))
+                 call soot_finitechem_ksg(SC(i,j,k,isc_sc:isc_sc+N_nons-1),T(i,j,k),dens,wCoeff)
+                 call soot_finitechem_kox(SC(i,j,k,isc_sc:isc_sc+N_nons-1),T(i,j,k),dens,oxCoeff)
+                 call soot_finitechem_ko2(SC(i,j,k,isc_sc:isc_sc+N_nons-1),T(i,j,k),dens,o2Coeff)
+                 call soot_finitechem_dimerprodrate(SC(i,j,k,isc_sc:isc_sc+N_nons-1),T(i,j,k),dens,ProdRate)
+              end select
+
 
               ! Rescale dimer production rate for transported 
               !prodRate = local_nbrC*prodRate / DIMER_NBRC
@@ -1358,8 +1408,9 @@ subroutine soot_hmom_poststep
               call soot_surfacereaction(kmom,src_tmp)
               FVsrc_sg(i,j,k) = (1.0_WP-omega)*src_tmp * MolarMassSoot/SootDensity
               call soot_surfaceoxidation(kmom,src_tmp)
-              FVsrc_ox  (i,j,k) = (1.0_WP-omega)*src_tmp * MolarMassSoot/SootDensity
-
+              FVsrc_ox(i,j,k) = (1.0_WP-omega)*src_tmp * MolarMassSoot/SootDensity
+              ! SD
+              !if (i.eq.261 .and. j.eq.3) print*,'SOOT_HMOM_POSTSTEP','FVsrc_PAH',FVsrc_nucl(i,j,3)+FVsrc_cond(261,3,3),'FVsrc_SG',FVsrc_sg(i,j,3),'FVsrc_OX', FVsrc_ox(i,j,3),'fv',volfrac(i,j,3) ! SD
               ! Unnormalize the moments
               mom = mom * (1.0_WP-omega)
            end if
@@ -1367,6 +1418,6 @@ subroutine soot_hmom_poststep
      end do
   end do
   !$OMP END PARALLEL DO
-
+  
   return
 end subroutine soot_hmom_poststep

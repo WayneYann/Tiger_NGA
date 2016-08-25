@@ -461,7 +461,7 @@ subroutine stat_2d_sample
         end do
      end do
   end do
-  
+  !print*,'FVsrc:',maxval(FVsrc_nucl),maxval(FVsrc_cond),maxval(FVsrc_sg),maxval(FVsrc_ox)
   Delta_t = Delta_t+dt
   
   return

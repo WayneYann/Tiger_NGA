@@ -21,7 +21,7 @@ LDFLAGS  = -openmp
 INCFLAGS = 
 MODFLAGS = -module $(MODDIR)
 DBGFLAGS = -openmp -O0 -g -CA -CB -CS -CV -traceback -debug all -ftrapuv -check all -WB -warn all
-OPTFLAGS = -openmp -O3 -xAVX -ip -override-limits
+OPTFLAGS = -openmp -O3 -xAVX -ip -override-limits -traceback
 
 # External libraries
 BLAS_DIR = /home/silideng/opt/lapack
@@ -31,7 +31,7 @@ LAPACK_LIB = -L$(LAPACK_DIR)/lib -llapack
 
 HYPRE_DIR = /home/silideng/opt/hypre
 HYPRE_INC = -I$(HYPRE_DIR)/include
-HYPRE_LIB = -L$(HYPRE_DIR)/lib -lHYPRE
+HYPRE_LIB = -L$(HYPRE_DIR)/lib -lHYPRE 
 
 FFTW_DIR = /home/silideng/opt/fftw
 FFTW_INC = -I$(FFTW_DIR)/include

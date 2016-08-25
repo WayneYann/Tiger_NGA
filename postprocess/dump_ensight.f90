@@ -265,9 +265,9 @@ subroutine dump_ensight_3D
      if (isc_ZMIX.ne.0) then
         ! Output it as CHI = DIFF*|nabla(Z)|^2
         name = 'CHI'
-        CHI = DIFF(:,:,:,isc_ZMIX)*CHI
+        !CHI = DIFF(:,:,:,isc_ZMIX)*CHI
         call dump_ensight_3D_scalar(CHI,name)
-        where(DIFF(:,:,:,isc_ZMIX).ne.0.0_WP) CHI = CHI/DIFF(:,:,:,isc_ZMIX)
+        !where(DIFF(:,:,:,isc_ZMIX).ne.0.0_WP) CHI = CHI/DIFF(:,:,:,isc_ZMIX)
      end if
      if (trim(chemistry).eq.'chemtable') then
         name = 'Y_F'

@@ -42,6 +42,9 @@ module finitechem
   ! Gas radiation
   logical :: gasrad
   integer :: isc_H2O, isc_CO2, isc_CH4, isc_CO
+
+  ! Burner heat loss
+  logical :: heatloss
   
   ! Soot radiation
   logical :: finitechem_sootrad
@@ -252,6 +255,9 @@ subroutine finitechem_init
 
   ! External heat source for ignition
   call parser_read('External ignition',ignition,.false.)
+
+  ! Heat loss to the burner
+  call parser_read('Burner heat loss',heatloss,.false.)
 
   ! Soot radiation
   call parser_read('Soot radiation',finitechem_sootrad,.false.)
@@ -549,8 +555,11 @@ subroutine finitechem_diffusion
   real(WP) :: Qrad,alphaH2O,alphaCO2,alphaCH4,alphaCO
   real(WP) :: c0,c1,c2,c3,c4,c5
   real(WP) :: tm1,T2
-  real(WP), parameter :: Tb = 293.0_WP
+  real(WP), parameter :: Tb = 298.0_WP
   real(WP), parameter :: radconst = 4.0_WP * 5.67051e-8_WP * R_cst / 101320.0_WP ! [W/(m^2-K^4)]|[atm to Pa]
+
+  ! Burner heat loss
+  real(WP) :: Qloss
   
   diff_corr = 0.0_WP
   FX = 0.0_WP
@@ -783,6 +792,15 @@ subroutine finitechem_diffusion
      end do
   end if
 
+  ! Burner heat loss
+  ! According to the mesh file, find the first point downstream of the wall
+  if (heatloss) then
+     do j=48,55
+        Qloss = -max(SC(5,j+2,3,isc_T)-298.0_WP, 0.0_WP) * RHO(5,j+2,3) / 5e-6_WP
+        diff_corr(5,j+2,3,N_nons+1) = diff_corr(5,j+2,3,N_nons+1) + Qloss
+     end do
+  end if
+  
   ! Compute specific heat
   do k=kmino_,kmaxo_
      do j=jmino_,jmaxo_
@@ -829,8 +847,9 @@ subroutine finitechem_diffusion
         do j=jmin_,jmax_
            do i=imin_,imax_
               ! For coflow flames
-              if (mask(i,j).ne.1 .and. x(i).ge.0.001 .and. x(i).le.0.010 .and. y(j).ge.0.005 .and. y(j).le.0.01) then
-                 diff_corr(i,j,k,N_nons+1) = diff_corr(i,j,k,N_nons+1) + max(1500.0_WP * RHO(i,j,k) - SC(i,j,k,isc_T) * RHO(i,j,k), 0.0_WP) / 2e-3_WP
+              if (mask(i,j).ne.1 .and. x(i).ge.0.00 .and. x(i).le.0.015 .and. y(j).ge.0.0015 .and. y(j).le.0.0055) then
+                 diff_corr(i,j,k,N_nons+1) = diff_corr(i,j,k,N_nons+1) + max(2000.0_WP * RHO(i,j,k) - SC(i,j,k,isc_T) * RHO(i,j,k), 0.0_WP) / 5e-3_WP
+                 diff_corr(i,j,k,5) = diff_corr(i,j,k,5) + max(1.0e-2_WP * RHO(i,j,k) - SC(i,j,k,isc_sc+4) * RHO(i,j,k), 0.0_WP) / 5e-3_WP !OH
               end if
               ! For 1D planar premixed flames
 !!$              if (mask(i,j).ne.1 .and. i.eq.101) then

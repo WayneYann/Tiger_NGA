@@ -15,8 +15,8 @@ F90FILES = param.f90 taylor.f90 init_flow.f90 dns_box.f90 channel.f90 \
 	   ignition.f90 blowing.f90 air_layer.f90 \
 	   helium_plume.f90 grating.f90 bubble.f90 \
            drop_coll.f90 glass.f90 density_ratio.f90 uniform.f90 \
-	   jetcart2.f90 simplejet.f90 jetcyl_coflow.f90
-
+	   jetcart2.f90 simplejet.f90 jetcyl_coflow.f90 \
+           bluffbody_SD.f90	 
 
 BINFILE = init_flow
 

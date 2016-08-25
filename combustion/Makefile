@@ -1,6 +1,6 @@
 include ../Makefile.in
 
-F90FILES = combustion.f90 newton.f90 finitechem.f90 TheSootF.f90\
+F90FILES = combustion.f90 newton.f90 finitechem.f90 EthyRedF.f90\
 	   chemtable_1D.f90 chemtable_2D.f90 chemtable_3D.f90 \
 	   chemtable_4D.f90 chemtable.f90
 
